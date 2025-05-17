@@ -1,6 +1,9 @@
 import { View, Text, TextInput, Pressable, Alert } from 'react-native';
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const STORAGE_KEY = '@todos';
 
 export default function Create() {
   const router = useRouter();
@@ -15,23 +18,22 @@ export default function Create() {
 
     setLoading(true);
     try {
-      const response = await fetch('https://jsonplaceholder.typicode.com/todos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: title.trim(),
-          completed: false,
-          userId: 1,
-        }),
-      });
+      // 新しいTodoを作成
+      const newTodo = {
+        id: Date.now(), // 一時的なIDとして現在のタイムスタンプを使用
+        title: title.trim(),
+        completed: false,
+        userId: 1,
+      };
 
-      if (!response.ok) {
-        throw new Error('作成に失敗しました');
-      }
+      // 既存のTodoを取得
+      const storedTodosJson = await AsyncStorage.getItem(STORAGE_KEY);
+      const storedTodos = storedTodosJson ? JSON.parse(storedTodosJson) : [];
 
-      const data = await response.json();
+      // 新しいTodoを追加
+      const updatedTodos = [newTodo, ...storedTodos];
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTodos));
+
       Alert.alert('成功', 'Todoを作成しました', [
         {
           text: 'OK',
@@ -50,7 +52,7 @@ export default function Create() {
 
   return (
     <View className="flex-1 bg-white p-4">
-      <Text className="text-2xl font-bold text-center mb-8">新しいTodoを作成</Text>
+      <Text className="text-2xl font-bold text-center mb-8 pt-4">新しいTodoを作成</Text>
 
       <View className="space-y-4">
         <View>

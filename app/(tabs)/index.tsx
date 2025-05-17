@@ -1,7 +1,9 @@
-import { View, FlatList, ActivityIndicator, Text } from "react-native";
-import { useEffect, useState } from "react";
+import { View, FlatList, ActivityIndicator, Text, Pressable } from "react-native";
+import { useEffect, useState, useCallback } from "react";
 import { TodoItem } from "../components/TodoItem";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import { FontAwesome } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Todo {
   id: number;
@@ -10,30 +12,42 @@ interface Todo {
   userId: number;
 }
 
+const STORAGE_KEY = '@todos';
+
 export default function Index() {
   const router = useRouter();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchTodos();
-  }, []);
-
   const fetchTodos = async () => {
     try {
+      // APIからデータを取得
       const response = await fetch('https://jsonplaceholder.typicode.com/todos');
       if (!response.ok) {
         throw new Error('データの取得に失敗しました');
       }
-      const data = await response.json();
-      setTodos(data);
+      const apiTodos = await response.json();
+
+      // ローカルストレージから保存したTodoを取得
+      const storedTodosJson = await AsyncStorage.getItem(STORAGE_KEY);
+      const storedTodos = storedTodosJson ? JSON.parse(storedTodosJson) : [];
+
+      // APIのデータとローカルのデータを結合
+      setTodos([...storedTodos, ...apiTodos]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
       setLoading(false);
     }
   };
+
+  // 画面がフォーカスされるたびにデータを更新
+  useFocusEffect(
+    useCallback(() => {
+      fetchTodos();
+    }, [])
+  );
 
   const handleTodoPress = (todo: Todo) => {
     router.push({
